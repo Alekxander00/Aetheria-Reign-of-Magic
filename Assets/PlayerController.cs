@@ -263,13 +263,31 @@ public partial class @PlayerController: IInputActionCollection2, IDisposable
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""ToggleControls"",
+                    ""type"": ""Button"",
+                    ""id"": ""3fecb917-9b41-4cb1-a867-7065f624ede8"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""ToggleVisualization"",
+                    ""type"": ""Button"",
+                    ""id"": ""6c29e136-1739-49ee-9ffb-ad6b8bb8cf16"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
                 }
             ],
             ""bindings"": [
                 {
                     ""name"": """",
                     ""id"": ""b267e880-6c6d-452a-8b1b-09d57f92237a"",
-                    ""path"": ""<Keyboard>/p"",
+                    ""path"": ""<Keyboard>/escape"",
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": """",
@@ -353,6 +371,39 @@ public partial class @PlayerController: IInputActionCollection2, IDisposable
                     ""action"": ""ToggleCell"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""f0f05cb9-7c4e-4030-9a3b-67a0f4a3c433"",
+                    ""path"": ""<Mouse>/leftButton"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""ToggleControls"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""e9114626-3d71-4440-a06f-53047307896d"",
+                    ""path"": ""<Gamepad>/select"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""ToggleControls"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""098702e3-e9c9-4c15-b302-25f9f70fc172"",
+                    ""path"": ""<Keyboard>/v"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""ToggleVisualization"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
                 }
             ]
         }
@@ -369,6 +420,8 @@ public partial class @PlayerController: IInputActionCollection2, IDisposable
         m_Gameplay_Restart = m_Gameplay.FindAction("Restart", throwIfNotFound: true);
         m_Gameplay_Clear = m_Gameplay.FindAction("Clear", throwIfNotFound: true);
         m_Gameplay_ToggleCell = m_Gameplay.FindAction("ToggleCell", throwIfNotFound: true);
+        m_Gameplay_ToggleControls = m_Gameplay.FindAction("ToggleControls", throwIfNotFound: true);
+        m_Gameplay_ToggleVisualization = m_Gameplay.FindAction("ToggleVisualization", throwIfNotFound: true);
     }
 
     ~@PlayerController()
@@ -561,6 +614,8 @@ public partial class @PlayerController: IInputActionCollection2, IDisposable
     private readonly InputAction m_Gameplay_Restart;
     private readonly InputAction m_Gameplay_Clear;
     private readonly InputAction m_Gameplay_ToggleCell;
+    private readonly InputAction m_Gameplay_ToggleControls;
+    private readonly InputAction m_Gameplay_ToggleVisualization;
     /// <summary>
     /// Provides access to input actions defined in input action map "Gameplay".
     /// </summary>
@@ -568,13 +623,12 @@ public partial class @PlayerController: IInputActionCollection2, IDisposable
     {
         private @PlayerController m_Wrapper;
 
-        public GameplayActions(PlayerController playerController) : this()
-        {
-            PlayerController = playerController;
-        }
-
         /// <summary>
         /// Construct a new instance of the input action map wrapper class.
+        /// </summary>
+        public GameplayActions(@PlayerController wrapper) { m_Wrapper = wrapper; }
+        /// <summary>
+        /// Provides access to the underlying input action "Gameplay/Pause".
         /// </summary>
         public InputAction @Pause => m_Wrapper.m_Gameplay_Pause;
         /// <summary>
@@ -590,6 +644,14 @@ public partial class @PlayerController: IInputActionCollection2, IDisposable
         /// </summary>
         public InputAction @ToggleCell => m_Wrapper.m_Gameplay_ToggleCell;
         /// <summary>
+        /// Provides access to the underlying input action "Gameplay/ToggleControls".
+        /// </summary>
+        public InputAction @ToggleControls => m_Wrapper.m_Gameplay_ToggleControls;
+        /// <summary>
+        /// Provides access to the underlying input action "Gameplay/ToggleVisualization".
+        /// </summary>
+        public InputAction @ToggleVisualization => m_Wrapper.m_Gameplay_ToggleVisualization;
+        /// <summary>
         /// Provides access to the underlying input action map instance.
         /// </summary>
         public InputActionMap Get() { return m_Wrapper.m_Gameplay; }
@@ -599,9 +661,6 @@ public partial class @PlayerController: IInputActionCollection2, IDisposable
         public void Disable() { Get().Disable(); }
         /// <inheritdoc cref="UnityEngine.InputSystem.InputActionMap.enabled" />
         public bool enabled => Get().enabled;
-
-        public PlayerController PlayerController { get; }
-
         /// <summary>
         /// Implicitly converts an <see ref="GameplayActions" /> to an <see ref="InputActionMap" /> instance.
         /// </summary>
@@ -630,6 +689,12 @@ public partial class @PlayerController: IInputActionCollection2, IDisposable
             @ToggleCell.started += instance.OnToggleCell;
             @ToggleCell.performed += instance.OnToggleCell;
             @ToggleCell.canceled += instance.OnToggleCell;
+            @ToggleControls.started += instance.OnToggleControls;
+            @ToggleControls.performed += instance.OnToggleControls;
+            @ToggleControls.canceled += instance.OnToggleControls;
+            @ToggleVisualization.started += instance.OnToggleVisualization;
+            @ToggleVisualization.performed += instance.OnToggleVisualization;
+            @ToggleVisualization.canceled += instance.OnToggleVisualization;
         }
 
         /// <summary>
@@ -653,6 +718,12 @@ public partial class @PlayerController: IInputActionCollection2, IDisposable
             @ToggleCell.started -= instance.OnToggleCell;
             @ToggleCell.performed -= instance.OnToggleCell;
             @ToggleCell.canceled -= instance.OnToggleCell;
+            @ToggleControls.started -= instance.OnToggleControls;
+            @ToggleControls.performed -= instance.OnToggleControls;
+            @ToggleControls.canceled -= instance.OnToggleControls;
+            @ToggleVisualization.started -= instance.OnToggleVisualization;
+            @ToggleVisualization.performed -= instance.OnToggleVisualization;
+            @ToggleVisualization.canceled -= instance.OnToggleVisualization;
         }
 
         /// <summary>
@@ -743,5 +814,19 @@ public partial class @PlayerController: IInputActionCollection2, IDisposable
         /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
         void OnToggleCell(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "ToggleControls" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnToggleControls(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "ToggleVisualization" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnToggleVisualization(InputAction.CallbackContext context);
     }
 }

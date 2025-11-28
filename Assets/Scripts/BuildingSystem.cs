@@ -4,8 +4,8 @@ using UnityEngine.UI;
 public class BuildingSystem : MonoBehaviour
 {
     [Header("Building Prefabs")]
-    public GameObject sanctuaryPrefab;      // Para Maná
-    public GameObject corruptorPrefab;      // Para Corrupción
+    public GameObject sanctuaryPrefab;
+    public GameObject corruptorPrefab;
 
     [Header("Building Costs")]
     public int sanctuaryCost = 100;
@@ -27,13 +27,13 @@ public class BuildingSystem : MonoBehaviour
 
     void Update()
     {
+        if (GameManager.Instance != null && GameManager.Instance.isGamePaused) return;
+
         if (!isBuildingMode) return;
 
-        // Mover fantasma del edificio
         if (buildingGhost == null && currentBuildingPrefab != null)
         {
             buildingGhost = Instantiate(currentBuildingPrefab);
-            // Hacerlo semi-transparente
             SpriteRenderer ghostRenderer = buildingGhost.GetComponent<SpriteRenderer>();
             if (ghostRenderer != null)
                 ghostRenderer.color = new Color(1, 1, 1, 0.5f);
@@ -46,13 +46,11 @@ public class BuildingSystem : MonoBehaviour
             buildingGhost.transform.position = mousePos;
         }
 
-        // Cancelar construcción con ESC
         if (Input.GetKeyDown(KeyCode.Escape))
         {
             CancelBuilding();
         }
 
-        // Click izquierdo para colocar edificio
         if (Input.GetMouseButtonDown(0))
         {
             TryPlaceBuilding();
@@ -63,7 +61,6 @@ public class BuildingSystem : MonoBehaviour
     {
         if (GameManager.Instance == null) return;
 
-        // Mostrar/ocultar botones según la facción
         if (GameManager.Instance.currentFaction == GameManager.PlayerFaction.Mana)
         {
             buildSanctuaryButton.gameObject.SetActive(true);
@@ -78,7 +75,6 @@ public class BuildingSystem : MonoBehaviour
 
     public void StartBuildingSanctuary()
     {
-        // Verificar facción
         if (GameManager.Instance.currentFaction != GameManager.PlayerFaction.Mana)
         {
             Debug.Log("Solo la Alianza de la Magia puede construir Santuarios");
@@ -100,7 +96,6 @@ public class BuildingSystem : MonoBehaviour
 
     public void StartBuildingCorruptor()
     {
-        // Verificar facción
         if (GameManager.Instance.currentFaction != GameManager.PlayerFaction.Corruption)
         {
             Debug.Log("Solo la Legión de la Corrupción puede construir Pozos Corruptores");
@@ -125,7 +120,6 @@ public class BuildingSystem : MonoBehaviour
         Vector3 worldPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
         worldPos.z = 0;
 
-        // Verificar posición válida (dentro del grid)
         GridManager gridManager = GridManager.Instance;
         int x = Mathf.RoundToInt(worldPos.x);
         int y = Mathf.RoundToInt(worldPos.y);
@@ -136,36 +130,28 @@ public class BuildingSystem : MonoBehaviour
             return;
         }
 
-        // Verificar terreno según facción
         bool canBuildHere = false;
         string terrainError = "";
 
         if (GameManager.Instance.currentFaction == GameManager.PlayerFaction.Mana)
         {
-            // Maná solo puede construir en tierra mágica (no normal)
             canBuildHere = gridManager.manaGrid[x, y] != CellState.TierraNormal;
             terrainError = "Solo puedes construir en Tierra Mágica, Cristales o cerca de Árboles Ancestrales";
         }
         else if (GameManager.Instance.currentFaction == GameManager.PlayerFaction.Corruption)
         {
-            // Corrupción solo puede construir en tierra corrupta
             canBuildHere = gridManager.corruptionGrid[x, y] > 0.3f;
             terrainError = "Solo puedes construir en áreas con alta corrupción";
         }
 
         if (canBuildHere)
         {
-            // Construir
             Instantiate(currentBuildingPrefab, worldPos, Quaternion.identity);
             GameManager.Instance.SpendResources(currentBuildingCost);
             Debug.Log("¡Edificio construido!");
 
-            // Aplicar efectos en la simulación
             ApplyBuildingEffects(x, y);
-
             CancelBuilding();
-
-            // Actualizar botones después de construir (por si se acaban los recursos)
             UpdateBuildingButtons();
         }
         else
@@ -180,7 +166,30 @@ public class BuildingSystem : MonoBehaviour
 
         if (currentBuildingPrefab == sanctuaryPrefab)
         {
-            // Santuario suprime corrupción en radio 5
+            // Santuario suprime corrupción en radio 7
+            for (int dx = -7; dx <= 7; dx++)
+            {
+                for (int dy = -7; dy <= 7; dy++)
+                {
+                    int nx = x + dx;
+                    int ny = y + dy;
+                    if (gridManager.IsValidPosition(nx, ny))
+                    {
+                        float distance = Vector2.Distance(new Vector2(x, y), new Vector2(nx, ny));
+                        if (distance <= 7)
+                        {
+                            float reduction = 0.6f * (1f - distance / 7f);
+                            gridManager.corruptionGrid[nx, ny] = Mathf.Max(0,
+                                gridManager.corruptionGrid[nx, ny] - reduction);
+                        }
+                    }
+                }
+            }
+            gridManager.UpdateVisualization();
+        }
+        else if (currentBuildingPrefab == corruptorPrefab)
+        {
+            // Pozo corruptor expande corrupción en radio 5
             for (int dx = -5; dx <= 5; dx++)
             {
                 for (int dy = -5; dy <= 5; dy++)
@@ -189,36 +198,12 @@ public class BuildingSystem : MonoBehaviour
                     int ny = y + dy;
                     if (gridManager.IsValidPosition(nx, ny))
                     {
-                        float distance = Vector2.Distance(new Vector2(x, y), new Vector2(nx, ny));
-                        if (distance <= 5)
-                        {
-                            gridManager.corruptionGrid[nx, ny] = Mathf.Max(0, gridManager.corruptionGrid[nx, ny] - 0.3f);
-                        }
+                        gridManager.corruptionGrid[nx, ny] = Mathf.Min(1f,
+                            gridManager.corruptionGrid[nx, ny] + 0.3f);
                     }
                 }
             }
             gridManager.UpdateVisualization();
-
-            // El componente Sanctuary se añade automáticamente al instanciar el prefab
-        }
-        else if (currentBuildingPrefab == corruptorPrefab)
-        {
-            // Pozo corruptor expande corrupción en radio 3
-            for (int dx = -3; dx <= 3; dx++)
-            {
-                for (int dy = -3; dy <= 3; dy++)
-                {
-                    int nx = x + dx;
-                    int ny = y + dy;
-                    if (gridManager.IsValidPosition(nx, ny))
-                    {
-                        gridManager.corruptionGrid[nx, ny] = Mathf.Min(1f, gridManager.corruptionGrid[nx, ny] + 0.2f);
-                    }
-                }
-            }
-            gridManager.UpdateVisualization();
-
-            // El componente Corruptor se añade automáticamente al instanciar el prefab
         }
     }
 

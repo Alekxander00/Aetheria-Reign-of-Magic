@@ -179,6 +179,15 @@
                     "initialStateCheck": false
                 },
                 {
+                    "name": "ToggleControls",
+                    "type": "Button",
+                    "id": "3fecb917-9b41-4cb1-a867-7065f624ede8",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
                     "name": "ToggleVisualization",
                     "type": "Button",
                     "id": "6c29e136-1739-49ee-9ffb-ad6b8bb8cf16",
@@ -192,7 +201,7 @@
                 {
                     "name": "",
                     "id": "b267e880-6c6d-452a-8b1b-09d57f92237a",
-                    "path": "<Keyboard>/p",
+                    "path": "<Keyboard>/escape",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
@@ -274,6 +283,28 @@
                     "processors": "",
                     "groups": "",
                     "action": "ToggleCell",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "f0f05cb9-7c4e-4030-9a3b-67a0f4a3c433",
+                    "path": "<Mouse>/leftButton",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "ToggleControls",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "e9114626-3d71-4440-a06f-53047307896d",
+                    "path": "<Gamepad>/select",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "ToggleControls",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },

@@ -1,4 +1,5 @@
 using System.Collections;
+using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -14,20 +15,68 @@ public class GameManager : MonoBehaviour
     public int corruptionResource = 100;
 
     [Header("Buildings")]
-    public int buildingLimit = 5;
+    public int buildingLimit = 10;
     public int currentBuildings = 0;
 
     [Header("Resource Generation")]
-    public float resourceGenerationInterval = 5f; // Cada 5 segundos
+    public float resourceGenerationInterval = 5f;
     public int baseManaGeneration = 10;
     public int baseCorruptionGeneration = 10;
 
-    private float generationTimer = 0f;
+    [Header("UI References")]
+    public TextMeshProUGUI manaText;
+    public TextMeshProUGUI corruptionText;
+    public TextMeshProUGUI factionText;
+
+    [Header("Game State - PAUSA GLOBAL")]
+    public bool isGamePaused = false;
+    public System.Action<bool> OnPauseStateChanged;
+
+    [Header("Audio")]
+    public AudioSource ambientAudioSource;
+    public AudioClip ambientSound;
+    public float ambientVolume = 0.3f;
+
+    private void Awake()
+    {
+        Debug.Log("GameManager: Awake iniciado");
+
+        if (Instance == null)
+        {
+            Instance = this;
+            // Quitamos DontDestroyOnLoad para evitar problemas
+            Debug.Log("GameManager: Instancia creada");
+        }
+        else
+        {
+            Debug.Log("GameManager: Instancia duplicada destruida");
+            Destroy(gameObject);
+            return;
+        }
+    }
 
     void Start()
     {
-        // Iniciar generación de recursos
+        Debug.Log("GameManager: Start iniciado");
+
+        // Asegurarnos de que el juego empiece en tiempo normal
+        Time.timeScale = 1f;
+        isGamePaused = false;
+
         StartCoroutine(ResourceGenerationRoutine());
+        UpdateUI();
+
+        // Configurar audio ambiental
+        if (ambientAudioSource != null && ambientSound != null)
+        {
+            ambientAudioSource.clip = ambientSound;
+            ambientAudioSource.volume = ambientVolume;
+            ambientAudioSource.loop = true;
+            ambientAudioSource.Play();
+            Debug.Log("GameManager: Audio ambiental configurado");
+        }
+
+        Debug.Log("GameManager: Start completado - Juego listo");
     }
 
     IEnumerator ResourceGenerationRoutine()
@@ -35,7 +84,11 @@ public class GameManager : MonoBehaviour
         while (true)
         {
             yield return new WaitForSeconds(resourceGenerationInterval);
-            GenerateResources();
+            if (!isGamePaused)
+            {
+                GenerateResources();
+                UpdateUI();
+            }
         }
     }
 
@@ -43,41 +96,33 @@ public class GameManager : MonoBehaviour
     {
         if (currentFaction == PlayerFaction.Mana)
         {
-            // Generar maná basado en edificios y territorio
-            int manaFromBuildings = CountManaBuildings() * 5;
-            int manaFromTerritory = CalculateManaTerritory() * 2;
-
+            int manaFromBuildings = CountManaBuildings() * 8;
+            int manaFromTerritory = CalculateManaTerritory();
             manaResource += baseManaGeneration + manaFromBuildings + manaFromTerritory;
-            Debug.Log($"Generado +{baseManaGeneration + manaFromBuildings + manaFromTerritory} maná");
         }
         else if (currentFaction == PlayerFaction.Corruption)
         {
-            // Generar corrupción basado en edificios y territorio
-            int corruptionFromBuildings = CountCorruptionBuildings() * 5;
-            int corruptionFromTerritory = CalculateCorruptionTerritory() * 2;
-
+            int corruptionFromBuildings = CountCorruptionBuildings() * 8;
+            int corruptionFromTerritory = CalculateCorruptionTerritory();
             corruptionResource += baseCorruptionGeneration + corruptionFromBuildings + corruptionFromTerritory;
-            Debug.Log($"Generado +{baseCorruptionGeneration + corruptionFromBuildings + corruptionFromTerritory} corrupción");
         }
+        UpdateUI();
     }
 
     int CountManaBuildings()
     {
-        // Contar santuarios en la escena
         Sanctuary[] sanctuaries = FindObjectsOfType<Sanctuary>();
         return sanctuaries.Length;
     }
 
     int CountCorruptionBuildings()
     {
-        // Contar pozos corruptores en la escena
         Corruptor[] corruptors = FindObjectsOfType<Corruptor>();
         return corruptors.Length;
     }
 
     int CalculateManaTerritory()
     {
-        // Calcular porcentaje del mapa controlado por maná
         GridManager gridManager = GridManager.Instance;
         if (gridManager == null) return 0;
 
@@ -93,14 +138,11 @@ public class GameManager : MonoBehaviour
                 }
             }
         }
-
-        int totalCells = gridManager.width * gridManager.height;
-        return (manaCells * 100) / totalCells; // Porcentaje
+        return manaCells / 10;
     }
 
     int CalculateCorruptionTerritory()
     {
-        // Calcular porcentaje del mapa controlado por corrupción
         GridManager gridManager = GridManager.Instance;
         if (gridManager == null) return 0;
 
@@ -115,23 +157,7 @@ public class GameManager : MonoBehaviour
                 }
             }
         }
-
-        int totalCells = gridManager.width * gridManager.height;
-        return (corruptionCells * 100) / totalCells; // Porcentaje
-    }
-
-    public void Awake()
-    {
-        // Sistema Singleton
-        if (Instance == null)
-        {
-            Instance = this;
-            DontDestroyOnLoad(gameObject); // Persiste entre escenas
-        }
-        else
-        {
-            Destroy(gameObject);
-        }
+        return corruptionCells / 10;
     }
 
     public void ChooseFaction(PlayerFaction faction)
@@ -139,7 +165,6 @@ public class GameManager : MonoBehaviour
         currentFaction = faction;
         Debug.Log($"Jugador eligió: {faction}");
 
-        // Inicializar recursos según facción
         if (faction == PlayerFaction.Mana)
         {
             manaResource = 200;
@@ -151,7 +176,7 @@ public class GameManager : MonoBehaviour
             corruptionResource = 200;
         }
 
-        // Cargar escena del juego
+        UpdateUI();
         SceneManager.LoadScene("GameScene");
     }
 
@@ -161,7 +186,6 @@ public class GameManager : MonoBehaviour
             return manaResource >= cost && (isUnit || currentBuildings < buildingLimit);
         else if (currentFaction == PlayerFaction.Corruption)
             return corruptionResource >= cost && (isUnit || currentBuildings < buildingLimit);
-
         return false;
     }
 
@@ -172,6 +196,32 @@ public class GameManager : MonoBehaviour
         else if (currentFaction == PlayerFaction.Corruption)
             corruptionResource -= cost;
 
-        currentBuildings++;
+        if (cost > 50) currentBuildings++;
+        UpdateUI();
+    }
+
+    public void UpdateUI()
+    {
+        if (manaText != null) manaText.text = $"Maná: {manaResource}";
+        if (corruptionText != null) corruptionText.text = $"Corrupción: {corruptionResource}";
+        if (factionText != null) factionText.text = $"Facción: {currentFaction}";
+    }
+
+    // ========== SISTEMA DE PAUSA GLOBAL ==========
+    public void TogglePause()
+    {
+        Debug.Log($"GameManager: TogglePause llamado - Estado actual: {isGamePaused}");
+
+        isGamePaused = !isGamePaused;
+        Time.timeScale = isGamePaused ? 0f : 1f;
+        OnPauseStateChanged?.Invoke(isGamePaused);
+        Debug.Log($"GameManager: Pausa {(isGamePaused ? "ACTIVADA" : "DESACTIVADA")}");
+    }
+
+    public void SetPause(bool paused)
+    {
+        isGamePaused = paused;
+        Time.timeScale = isGamePaused ? 0f : 1f;
+        OnPauseStateChanged?.Invoke(isGamePaused);
     }
 }

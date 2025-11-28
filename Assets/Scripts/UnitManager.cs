@@ -42,7 +42,6 @@ public class UnitManager : MonoBehaviour
 
     Vector3 FindSafeSpawnPosition()
     {
-        // Buscar posición cerca del centro del mapa, pero aleatoria
         GridManager gridManager = GridManager.Instance;
         int x = Random.Range(5, gridManager.width - 5);
         int y = Random.Range(5, gridManager.height - 5);

@@ -19,10 +19,14 @@ public class ManaFlowSimulation : MonoBehaviour
 
     [Header("Interacción con Corrupción")]
     public bool corruptionAffectsMana = true;
-    public float corruptionManaReduction = 0.3f;
+    public float corruptionManaReduction = 0.25f; // Balanceado
+
+    [Header("Tree Power")]
+    public float treeSuppressionPower = 0.15f; // Reducido significativamente
+    public int treeSuppressionRadius = 3; // Reducido
 
     private GridManager gridManager;
-    private int[,] ageGrid; // Mantenemos esto local
+    private int[,] ageGrid;
     private float timer;
     private bool isPaused = false;
     public bool IsInitialized { get; private set; } = false;
@@ -35,23 +39,14 @@ public class ManaFlowSimulation : MonoBehaviour
             Debug.LogError("No se encontró GridManager");
             return;
         }
-
         InitializeSimulation();
     }
 
     public void InitializeSimulation()
     {
         InitializeGrid();
-
-        if (InputManager.Instance != null)
-        {
-            InputManager.Instance.OnPause += TogglePause;
-            InputManager.Instance.OnRestart += RestartSimulation;
-            InputManager.Instance.OnClear += ClearSimulation;
-        }
-
         IsInitialized = true;
-        Debug.Log("ManaFlowSimulation inicializado con grid compartido");
+        Debug.Log("ManaFlowSimulation inicializado");
     }
 
     public void InitializeGrid()
@@ -92,6 +87,7 @@ public class ManaFlowSimulation : MonoBehaviour
 
     void Update()
     {
+        if (GameManager.Instance != null && GameManager.Instance.isGamePaused) return;
         if (!IsInitialized || isPaused || !autoSimulate) return;
 
         timer += Time.deltaTime;
@@ -100,6 +96,7 @@ public class ManaFlowSimulation : MonoBehaviour
             SimulateStep();
             timer = 0f;
         }
+
     }
 
     public void SimulateStep()
@@ -114,6 +111,56 @@ public class ManaFlowSimulation : MonoBehaviour
         int height = gridManager.height;
         CellState[,] nextGrid = new CellState[width, height];
 
+        // PRIMERO: Copiar estado actual
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                nextGrid[x, y] = gridManager.manaGrid[x, y];
+            }
+        }
+
+        // SEGUNDO: Los árboles ancestrales GENERAN maná y SUPRIMEN corrupción
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                if (gridManager.manaGrid[x, y] == CellState.ArbolAncestral)
+                {
+                    // Emitir pulsos de maná en radio 2 (reducido)
+                    for (int dx = -2; dx <= 2; dx++)
+                    {
+                        for (int dy = -2; dy <= 2; dy++)
+                        {
+                            int nx = x + dx;
+                            int ny = y + dy;
+
+                            if (gridManager.IsValidPosition(nx, ny))
+                            {
+                                if (gridManager.manaGrid[nx, ny] == CellState.TierraNormal)
+                                {
+                                    if (Random.value < 0.2f) // Reducido
+                                    {
+                                        nextGrid[nx, ny] = CellState.TierraMagica;
+                                    }
+                                }
+
+                                // Suprimir corrupción alrededor del árbol (mucho menos)
+                                float distance = Vector2.Distance(new Vector2(x, y), new Vector2(nx, ny));
+                                if (distance <= treeSuppressionRadius)
+                                {
+                                    float suppression = treeSuppressionPower * (1f - distance / treeSuppressionRadius);
+                                    gridManager.corruptionGrid[nx, ny] = Mathf.Max(0f,
+                                        gridManager.corruptionGrid[nx, ny] - suppression * 0.3f); // Muy reducido
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // TERCERO: Aplicar reglas del autómata
         for (int x = 0; x < width; x++)
         {
             for (int y = 0; y < height; y++)
@@ -122,26 +169,28 @@ public class ManaFlowSimulation : MonoBehaviour
                 CellState currentState = gridManager.manaGrid[x, y];
                 CellState nextState = currentState;
 
-                // INTERACCIÓN CON CORRUPCIÓN
                 if (corruptionAffectsMana && IsCellCorrupted(x, y))
                 {
-                    // La corrupción degrada el maná
+                    // LA CORRUPCIÓN SÍ AFECTA AL MANÁ
                     if (currentState == CellState.TierraMagica && Random.value < corruptionManaReduction)
                     {
                         nextState = CellState.TierraNormal;
                     }
-                    else if (currentState == CellState.CristalMagico && Random.value < corruptionManaReduction * 0.5f)
+                    else if (currentState == CellState.CristalMagico && Random.value < corruptionManaReduction * 0.4f)
+                    {
+                        nextState = CellState.TierraMagica;
+                    }
+                    else if (currentState == CellState.ArbolAncestral && Random.value < corruptionManaReduction * 0.08f)
                     {
                         nextState = CellState.TierraMagica;
                     }
                 }
                 else
                 {
-                    // REGLAS NORMALES DEL AUTÓMATA
                     switch (currentState)
                     {
                         case CellState.TierraNormal:
-                            if (vecinosMagicos == 3 && Random.value < probNacimiento)
+                            if (vecinosMagicos >= 3 && Random.value < probNacimiento)
                             {
                                 nextState = CellState.TierraMagica;
                             }
@@ -162,7 +211,6 @@ public class ManaFlowSimulation : MonoBehaviour
 
                 nextGrid[x, y] = nextState;
 
-                // Actualizar edad
                 if (nextState == currentState)
                 {
                     ageGrid[x, y]++;
@@ -174,7 +222,7 @@ public class ManaFlowSimulation : MonoBehaviour
             }
         }
 
-        // Aplicar cambios al grid compartido
+        // APLICAR cambios
         for (int x = 0; x < width; x++)
         {
             for (int y = 0; y < height; y++)
@@ -187,16 +235,13 @@ public class ManaFlowSimulation : MonoBehaviour
     int CountMagicalNeighbors(int x, int y)
     {
         int count = 0;
-
         for (int dx = -radioInfluencia; dx <= radioInfluencia; dx++)
         {
             for (int dy = -radioInfluencia; dy <= radioInfluencia; dy++)
             {
                 if (dx == 0 && dy == 0) continue;
-
                 int nx = x + dx;
                 int ny = y + dy;
-
                 if (gridManager.IsValidPosition(nx, ny) &&
                     gridManager.manaGrid[nx, ny] != CellState.TierraNormal)
                 {
@@ -204,7 +249,6 @@ public class ManaFlowSimulation : MonoBehaviour
                 }
             }
         }
-
         return count;
     }
 
@@ -213,21 +257,21 @@ public class ManaFlowSimulation : MonoBehaviour
         return gridManager.corruptionGrid[x, y] > 0.3f;
     }
 
-    // Input handlers
-    void TogglePause()
+    // Resto del código igual...
+    public void TogglePause()
     {
         isPaused = !isPaused;
         Debug.Log(isPaused ? "Mana Flow pausado" : "Mana Flow reanudado");
     }
 
-    void RestartSimulation()
+    public void RestartSimulation()
     {
         Debug.Log("Reiniciando Mana Flow...");
         InitializeGrid();
         timer = 0f;
     }
 
-    void ClearSimulation()
+    public void ClearSimulation()
     {
         Debug.Log("Limpiando Mana Flow...");
         for (int x = 0; x < gridManager.width; x++)
@@ -246,15 +290,5 @@ public class ManaFlowSimulation : MonoBehaviour
         if (!IsInitialized || !gridManager.IsValidPosition(x, y))
             return CellState.TierraNormal;
         return gridManager.manaGrid[x, y];
-    }
-
-    void OnDestroy()
-    {
-        if (InputManager.Instance != null)
-        {
-            InputManager.Instance.OnPause -= TogglePause;
-            InputManager.Instance.OnRestart -= RestartSimulation;
-            InputManager.Instance.OnClear -= ClearSimulation;
-        }
     }
 }
