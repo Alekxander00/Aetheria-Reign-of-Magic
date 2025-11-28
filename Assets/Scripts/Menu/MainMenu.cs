@@ -1,4 +1,4 @@
-using UnityEngine;
+Ôªøusing UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
@@ -16,16 +16,16 @@ public class MainMenu : MonoBehaviour
         manaFactionButton.onClick.AddListener(() => ChooseFaction(GameManager.PlayerFaction.Mana));
         corruptionFactionButton.onClick.AddListener(() => ChooseFaction(GameManager.PlayerFaction.Corruption));
 
-        // Actualizar descripciÛn inicial
+        // Actualizar descripci√≥n inicial
         UpdateDescription();
     }
 
     void ChooseFaction(GameManager.PlayerFaction faction)
     {
-        // Guardar la facciÛn seleccionada
+        // Guardar la facci√≥n seleccionada
         selectedFaction = faction;
 
-        Debug.Log($"FacciÛn seleccionada temporalmente: {faction}");
+        Debug.Log($"Facci√≥n seleccionada temporalmente: {faction}");
 
         // Efecto visual de feedback
         if (faction == GameManager.PlayerFaction.Mana)
@@ -39,7 +39,7 @@ public class MainMenu : MonoBehaviour
             manaFactionButton.image.color = Color.white; // Resetear el otro
         }
 
-        // Elegir facciÛn despuÈs de breve delay
+        // Elegir facci√≥n despu√©s de breve delay
         Invoke("ExecuteFactionChoice", 0.5f);
     }
 
@@ -56,41 +56,55 @@ public class MainMenu : MonoBehaviour
 
     void ExecuteFactionChoice()
     {
-        Debug.Log($"Ejecutando elecciÛn de facciÛn: {selectedFaction}");
+        Debug.Log($"=== EJECUTANDO ELECCI√ìN DE FACCI√ìN ===");
+        Debug.Log($"Facci√≥n seleccionada: {selectedFaction}");
+        Debug.Log($"GameManager.Instance: {GameManager.Instance}");
 
-        // Llamar al GameManager para que procese la elecciÛn
+        // Llamar al GameManager para que procese la elecci√≥n
         if (GameManager.Instance != null)
         {
+            Debug.Log("Llamando a GameManager.Instance.ChooseFaction...");
             GameManager.Instance.ChooseFaction(selectedFaction);
         }
         else
         {
-            Debug.LogError("GameManager.Instance es null!");
+            Debug.LogError("‚ùå GameManager.Instance es null!");
+
+            // Buscar cualquier GameManager en la escena
+            GameManager manager = FindObjectOfType<GameManager>();
+            if (manager != null)
+            {
+                Debug.Log("Se encontr√≥ un GameManager en la escena, asignando Instance...");
+                GameManager.Instance = manager;
+                manager.ChooseFaction(selectedFaction);
+            }
         }
     }
 
     public void UpdateDescription()
     {
-        string manaDesc = "ALIANZA DE LA MAGIA\n\nPreserva y expande el flujo de man·\nCrea santuarios de protecciÛn\nPurifica la corrupciÛn";
-        string corruptionDesc = "LEGI”N DE LA CORRUPCI”N\n\nDomina el mundo con corrupciÛn\nExpande tu influencia oscura\nConsume la energÌa m·gica";
+        string manaDesc = "ALIANZA DE LA MAGIA\n\nPreserva y expande el flujo de man√°\nCrea santuarios de protecci√≥n\nPurifica la corrupci√≥n";
+        string corruptionDesc = "LEGI√ìN DE LA CORRUPCI√ìN\n\nDomina el mundo con corrupci√≥n\nExpande tu influencia oscura\nConsume la energ√≠a m√°gica";
 
-        // Mostrar ambas descripciones o cambiar din·micamente
+        // Mostrar ambas descripciones o cambiar din√°micamente
         descriptionText.text = "Elige tu bando:\n\n" + manaDesc + "\n\n" + corruptionDesc;
     }
 
-    // MÈtodos para hover (opcionales)
+    // M√©todos para hover (opcionales)
     public void OnManaButtonHover()
     {
-        descriptionText.text = "ALIANZA DE LA MAGIA\n\nPreserva y expande el flujo de man·\nCrea santuarios de protecciÛn\nPurifica la corrupciÛn\n\nRecursos: Man·";
+        descriptionText.text = "ALIANZA DE LA MAGIA\n\nPreserva y expande el flujo de man√°\nCrea santuarios de protecci√≥n\nPurifica la corrupci√≥n\n\nRecursos: Man√°";
     }
 
     public void OnCorruptionButtonHover()
     {
-        descriptionText.text = "LEGI”N DE LA CORRUPCI”N\n\nDomina el mundo con corrupciÛn\nExpande tu influencia oscura\nConsume la energÌa m·gica\n\nRecursos: CorrupciÛn";
+        descriptionText.text = "LEGI√ìN DE LA CORRUPCI√ìN\n\nDomina el mundo con corrupci√≥n\nExpande tu influencia oscura\nConsume la energ√≠a m√°gica\n\nRecursos: Corrupci√≥n";
     }
 
     public void OnButtonHoverExit()
     {
         UpdateDescription();
     }
+
+
 }

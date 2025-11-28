@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -37,6 +37,9 @@ public class GameManager : MonoBehaviour
     public AudioClip ambientSound;
     public float ambientVolume = 0.3f;
 
+    // Evento para cambios de facción
+    public System.Action<PlayerFaction> OnFactionChanged;
+
     private void Awake()
     {
         Debug.Log("GameManager: Awake iniciado");
@@ -44,8 +47,8 @@ public class GameManager : MonoBehaviour
         if (Instance == null)
         {
             Instance = this;
-            // Quitamos DontDestroyOnLoad para evitar problemas
-            Debug.Log("GameManager: Instancia creada");
+            DontDestroyOnLoad(gameObject);  // ✅ ESTA LÍNEA ES CLAVE
+            Debug.Log("GameManager: Instancia creada y persistente");
         }
         else
         {
@@ -59,14 +62,12 @@ public class GameManager : MonoBehaviour
     {
         Debug.Log("GameManager: Start iniciado");
 
-        // Asegurarnos de que el juego empiece en tiempo normal
         Time.timeScale = 1f;
         isGamePaused = false;
 
         StartCoroutine(ResourceGenerationRoutine());
         UpdateUI();
 
-        // Configurar audio ambiental
         if (ambientAudioSource != null && ambientSound != null)
         {
             ambientAudioSource.clip = ambientSound;
@@ -163,7 +164,7 @@ public class GameManager : MonoBehaviour
     public void ChooseFaction(PlayerFaction faction)
     {
         currentFaction = faction;
-        Debug.Log($"Jugador eligi�: {faction}");
+        Debug.Log($"Jugador eligió: {faction}");
 
         if (faction == PlayerFaction.Mana)
         {
@@ -177,8 +178,52 @@ public class GameManager : MonoBehaviour
         }
 
         UpdateUI();
+
+        // Notificar a BuildingSystem
+        BuildingSystem buildingSystem = FindObjectOfType<BuildingSystem>();
+        if (buildingSystem != null)
+        {
+            buildingSystem.UpdateBuildingButtons();
+        }
+
+        Debug.Log("Cargando GameScene...");
         SceneManager.LoadScene("GameScene");
     }
+
+    void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        if (scene.name == "GameScene")
+        {
+            Debug.Log("GameScene cargada, actualizando UI...");
+
+            // Esperar un frame y luego forzar actualización del ResourceUI
+            StartCoroutine(UpdateUIAfterSceneLoad());
+        }
+    }
+    private System.Collections.IEnumerator UpdateUIAfterSceneLoad()
+    {
+        yield return new WaitForSeconds(0.1f);
+
+        // Buscar y actualizar ResourceUI
+        ResourceUI resourceUI = FindObjectOfType<ResourceUI>();
+        if (resourceUI != null)
+        {
+            resourceUI.ForceUpdateUI();
+            Debug.Log("ResourceUI actualizado después de carga de escena");
+        }
+        else
+        {
+            Debug.LogError("No se encontró ResourceUI en la escena!");
+        }
+
+        // También actualizar BuildingSystem por si acaso
+        BuildingSystem buildingSystem = FindObjectOfType<BuildingSystem>();
+        if (buildingSystem != null)
+        {
+            buildingSystem.UpdateBuildingButtons();
+        }
+    }
+
 
     public bool CanBuild(int cost, bool isUnit = false)
     {
@@ -202,9 +247,9 @@ public class GameManager : MonoBehaviour
 
     public void UpdateUI()
     {
-        if (manaText != null) manaText.text = $"Man�: {manaResource}";
-        if (corruptionText != null) corruptionText.text = $"Corrupci�n: {corruptionResource}";
-        if (factionText != null) factionText.text = $"Facci�n: {currentFaction}";
+        if (manaText != null) manaText.text = $"Maná: {manaResource}";
+        if (corruptionText != null) corruptionText.text = $"Corrupción: {corruptionResource}";
+        if (factionText != null) factionText.text = $"Facción: {currentFaction}";
     }
 
     // ========== SISTEMA DE PAUSA GLOBAL ==========
@@ -223,5 +268,15 @@ public class GameManager : MonoBehaviour
         isGamePaused = paused;
         Time.timeScale = isGamePaused ? 0f : 1f;
         OnPauseStateChanged?.Invoke(isGamePaused);
+    }
+
+    void OnEnable()
+    {
+        SceneManager.sceneLoaded += OnSceneLoaded;
+    }
+
+    void OnDisable()
+    {
+        SceneManager.sceneLoaded -= OnSceneLoaded;
     }
 }

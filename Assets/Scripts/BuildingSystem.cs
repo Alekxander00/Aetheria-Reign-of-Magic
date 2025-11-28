@@ -1,4 +1,4 @@
-using UnityEngine;
+ï»¿using UnityEngine;
 using UnityEngine.UI;
 
 public class BuildingSystem : MonoBehaviour
@@ -22,7 +22,14 @@ public class BuildingSystem : MonoBehaviour
 
     void Start()
     {
+        StartCoroutine(InitializeButtons());
+    }
+
+    private System.Collections.IEnumerator InitializeButtons()
+    {
+        yield return new WaitForEndOfFrame();
         UpdateBuildingButtons();
+        Debug.Log("BuildingSystem inicializado completamente");
     }
 
     void Update()
@@ -59,17 +66,46 @@ public class BuildingSystem : MonoBehaviour
 
     public void UpdateBuildingButtons()
     {
-        if (GameManager.Instance == null) return;
+        if (GameManager.Instance == null)
+        {
+            Debug.LogError("GameManager.Instance es null en BuildingSystem");
+            return;
+        }
 
+        Debug.Log($"BuildingSystem: Actualizando botones para {GameManager.Instance.currentFaction}");
+
+        // Primero ocultar todos los botones
+        if (buildSanctuaryButton != null)
+        {
+            buildSanctuaryButton.gameObject.SetActive(false);
+            Debug.Log("BuildingSystem: Santuario ocultado");
+        }
+        if (buildCorruptorButton != null)
+        {
+            buildCorruptorButton.gameObject.SetActive(false);
+            Debug.Log("BuildingSystem: Corruptor ocultado");
+        }
+
+        // Luego mostrar solo los de la facciÃ³n actual
         if (GameManager.Instance.currentFaction == GameManager.PlayerFaction.Mana)
         {
-            buildSanctuaryButton.gameObject.SetActive(true);
-            buildCorruptorButton.gameObject.SetActive(false);
+            if (buildSanctuaryButton != null)
+            {
+                buildSanctuaryButton.gameObject.SetActive(true);
+                Debug.Log("âœ… BuildingSystem: BotÃ³n Santuario ACTIVADO");
+            }
         }
         else if (GameManager.Instance.currentFaction == GameManager.PlayerFaction.Corruption)
         {
-            buildSanctuaryButton.gameObject.SetActive(false);
-            buildCorruptorButton.gameObject.SetActive(true);
+            if (buildCorruptorButton != null)
+            {
+                buildCorruptorButton.gameObject.SetActive(true);
+                Debug.Log("âœ… BuildingSystem: BotÃ³n Corruptor ACTIVADO");
+            }
+        }
+        else
+        {
+            Debug.LogWarning("BuildingSystem: FacciÃ³n neutral o no definida");
         }
     }
 
@@ -86,7 +122,7 @@ public class BuildingSystem : MonoBehaviour
             isBuildingMode = true;
             currentBuildingPrefab = sanctuaryPrefab;
             currentBuildingCost = sanctuaryCost;
-            Debug.Log("Modo construcción: Santuario. Click en terreno válido para construir. ESC para cancelar.");
+            Debug.Log("Modo construcciÃ³n: Santuario. Click en terreno vÃ¡lido para construir. ESC para cancelar.");
         }
         else
         {
@@ -98,7 +134,7 @@ public class BuildingSystem : MonoBehaviour
     {
         if (GameManager.Instance.currentFaction != GameManager.PlayerFaction.Corruption)
         {
-            Debug.Log("Solo la Legión de la Corrupción puede construir Pozos Corruptores");
+            Debug.Log("Solo la LegiÃ³n de la CorrupciÃ³n puede construir Pozos Corruptores");
             return;
         }
 
@@ -107,7 +143,7 @@ public class BuildingSystem : MonoBehaviour
             isBuildingMode = true;
             currentBuildingPrefab = corruptorPrefab;
             currentBuildingCost = corruptorCost;
-            Debug.Log("Modo construcción: Pozo Corruptor. Click en terreno válido para construir. ESC para cancelar.");
+            Debug.Log("Modo construcciÃ³n: Pozo Corruptor. Click en terreno vÃ¡lido para construir. ESC para cancelar.");
         }
         else
         {
@@ -126,7 +162,7 @@ public class BuildingSystem : MonoBehaviour
 
         if (!gridManager.IsValidPosition(x, y))
         {
-            Debug.Log("Posición inválida para construir");
+            Debug.Log("PosiciÃ³n invÃ¡lida para construir");
             return;
         }
 
@@ -136,19 +172,19 @@ public class BuildingSystem : MonoBehaviour
         if (GameManager.Instance.currentFaction == GameManager.PlayerFaction.Mana)
         {
             canBuildHere = gridManager.manaGrid[x, y] != CellState.TierraNormal;
-            terrainError = "Solo puedes construir en Tierra Mágica, Cristales o cerca de Árboles Ancestrales";
+            terrainError = "Solo puedes construir en Tierra MÃ¡gica, Cristales o cerca de Ãrboles Ancestrales";
         }
         else if (GameManager.Instance.currentFaction == GameManager.PlayerFaction.Corruption)
         {
             canBuildHere = gridManager.corruptionGrid[x, y] > 0.3f;
-            terrainError = "Solo puedes construir en áreas con alta corrupción";
+            terrainError = "Solo puedes construir en Ã¡reas con alta corrupciÃ³n";
         }
 
         if (canBuildHere)
         {
             Instantiate(currentBuildingPrefab, worldPos, Quaternion.identity);
             GameManager.Instance.SpendResources(currentBuildingCost);
-            Debug.Log("¡Edificio construido!");
+            Debug.Log("Â¡Edificio construido!");
 
             ApplyBuildingEffects(x, y);
             CancelBuilding();
@@ -166,7 +202,7 @@ public class BuildingSystem : MonoBehaviour
 
         if (currentBuildingPrefab == sanctuaryPrefab)
         {
-            // Santuario suprime corrupción en radio 7
+            // Santuario suprime corrupciÃ³n en radio 7
             for (int dx = -7; dx <= 7; dx++)
             {
                 for (int dy = -7; dy <= 7; dy++)
@@ -189,7 +225,7 @@ public class BuildingSystem : MonoBehaviour
         }
         else if (currentBuildingPrefab == corruptorPrefab)
         {
-            // Pozo corruptor expande corrupción en radio 5
+            // Pozo corruptor expande corrupciÃ³n en radio 5
             for (int dx = -5; dx <= 5; dx++)
             {
                 for (int dy = -5; dy <= 5; dy++)
@@ -217,6 +253,6 @@ public class BuildingSystem : MonoBehaviour
         isBuildingMode = false;
         currentBuildingPrefab = null;
         currentBuildingCost = 0;
-        Debug.Log("Modo construcción cancelado");
+        Debug.Log("Modo construcciÃ³n cancelado");
     }
 }
